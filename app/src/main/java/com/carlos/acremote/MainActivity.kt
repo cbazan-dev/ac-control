@@ -7,20 +7,23 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.carlos.acremote.ui.theme.ACRemoteTheme
+
+// Marca/modelo por defecto hasta que exista la selección/onboarding (Fase 4).
+private const val DEFAULT_MARCA = "LG"
+private const val DEFAULT_MODELO = "generico_frio_1"
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -38,7 +41,11 @@ class MainActivity : ComponentActivity() {
 fun HomeScreen(hasIrEmitter: Boolean) {
     val context = LocalContext.current
     val transmitter = remember { IrTransmitter(context) }
-    var lastResult by remember { mutableStateOf<String?>(null) }
+    val repository = remember { IrCodeRepository(context) }
+    val viewModel: AcViewModel = viewModel(
+        factory = AcViewModelFactory(transmitter, repository, DEFAULT_MARCA, DEFAULT_MODELO)
+    )
+    val uiState by viewModel.uiState.collectAsState()
 
     Scaffold { paddingValues ->
         Column(
@@ -47,29 +54,36 @@ fun HomeScreen(hasIrEmitter: Boolean) {
                 .padding(paddingValues)
                 .padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            verticalArrangement = Arrangement.spacedBy(24.dp)
         ) {
             Text(
                 text = if (hasIrEmitter) {
-                    "IR blaster detectado. Listo para configurar tu A/C."
+                    "$DEFAULT_MARCA / $DEFAULT_MODELO"
                 } else {
                     "Este dispositivo no tiene IR blaster. La app no puede funcionar aquí."
                 },
                 style = MaterialTheme.typography.bodyLarge
             )
 
-            Button(
-                enabled = hasIrEmitter,
-                onClick = {
-                    val sent = transmitter.transmit(SamplePatterns.FREQUENCY_HZ, SamplePatterns.TEST_PATTERN)
-                    lastResult = if (sent) "Señal IR de prueba enviada" else "No se pudo enviar: sin IR blaster"
-                }
-            ) {
-                Text("Probar señal IR")
-            }
+            if (hasIrEmitter) {
+                PowerButton(isOn = uiState.power, onClick = viewModel::togglePower)
 
-            lastResult?.let { result ->
-                Text(text = result, style = MaterialTheme.typography.bodyLarge)
+                TemperatureControl(
+                    tempC = uiState.tempC,
+                    enabled = uiState.power,
+                    onIncrease = viewModel::increaseTemp,
+                    onDecrease = viewModel::decreaseTemp
+                )
+
+                ModeSelector(
+                    selected = uiState.modo,
+                    enabled = uiState.power,
+                    onSelect = viewModel::setModo
+                )
+
+                uiState.lastMessage?.let { message ->
+                    Text(text = message, style = MaterialTheme.typography.bodyMedium)
+                }
             }
         }
     }
