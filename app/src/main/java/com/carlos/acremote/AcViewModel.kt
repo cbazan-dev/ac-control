@@ -2,9 +2,11 @@ package com.carlos.acremote
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 
 private const val TEMP_MIN = 16
 private const val TEMP_MAX = 30
@@ -12,11 +14,14 @@ private const val TEMP_MAX = 30
 class AcViewModel(
     private val transmitter: IrTransmitter,
     private val repository: IrCodeRepository,
+    private val preferencesRepository: AcPreferencesRepository,
     private val marca: String,
-    private val modelo: String
+    private val modelo: String,
+    initialTempC: Int,
+    initialModo: String
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(AcUiState())
+    private val _uiState = MutableStateFlow(AcUiState(tempC = initialTempC, modo = initialModo))
     val uiState: StateFlow<AcUiState> = _uiState.asStateFlow()
 
     fun togglePower() {
@@ -52,6 +57,9 @@ class AcViewModel(
         _uiState.value = newState.copy(
             lastMessage = if (sent) null else "No se pudo enviar el comando de $descripcion para $marca/$modelo"
         )
+        viewModelScope.launch {
+            preferencesRepository.guardarEstado(newState.tempC, newState.modo)
+        }
     }
 
     private fun send(state: AcUiState, rawComando: String): Boolean {
@@ -72,11 +80,16 @@ class AcViewModel(
 class AcViewModelFactory(
     private val transmitter: IrTransmitter,
     private val repository: IrCodeRepository,
+    private val preferencesRepository: AcPreferencesRepository,
     private val marca: String,
-    private val modelo: String
+    private val modelo: String,
+    private val initialTempC: Int,
+    private val initialModo: String
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         @Suppress("UNCHECKED_CAST")
-        return AcViewModel(transmitter, repository, marca, modelo) as T
+        return AcViewModel(
+            transmitter, repository, preferencesRepository, marca, modelo, initialTempC, initialModo
+        ) as T
     }
 }
