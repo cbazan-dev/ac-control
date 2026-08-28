@@ -5,7 +5,6 @@ import androidx.lifecycle.ViewModelProvider
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.update
 
 private const val TEMP_MIN = 16
 private const val TEMP_MAX = 30
@@ -21,53 +20,52 @@ class AcViewModel(
     val uiState: StateFlow<AcUiState> = _uiState.asStateFlow()
 
     fun togglePower() {
-        val turningOn = !_uiState.value.power
-        val sent = sendCommand(if (turningOn) "power_on" else "power_off")
-        _uiState.update {
-            it.copy(
-                power = turningOn,
-                lastMessage = if (sent) null else "No se encontró el comando de power para $marca/$modelo"
-            )
-        }
+        val current = _uiState.value
+        val turningOn = !current.power
+        val newState = current.copy(power = turningOn)
+        applyAndSend(newState, if (turningOn) "power_on" else "power_off", "power")
     }
 
     fun increaseTemp() {
-        if (!_uiState.value.power) return
-        val sent = sendCommand("temp_up")
-        _uiState.update {
-            it.copy(
-                tempC = (it.tempC + 1).coerceAtMost(TEMP_MAX),
-                lastMessage = if (sent) null else "No se encontró el comando temp_up para $marca/$modelo"
-            )
-        }
+        val current = _uiState.value
+        if (!current.power) return
+        val newState = current.copy(tempC = (current.tempC + 1).coerceAtMost(TEMP_MAX))
+        applyAndSend(newState, "temp_up", "temp_up")
     }
 
     fun decreaseTemp() {
-        if (!_uiState.value.power) return
-        val sent = sendCommand("temp_down")
-        _uiState.update {
-            it.copy(
-                tempC = (it.tempC - 1).coerceAtLeast(TEMP_MIN),
-                lastMessage = if (sent) null else "No se encontró el comando temp_down para $marca/$modelo"
-            )
-        }
+        val current = _uiState.value
+        if (!current.power) return
+        val newState = current.copy(tempC = (current.tempC - 1).coerceAtLeast(TEMP_MIN))
+        applyAndSend(newState, "temp_down", "temp_down")
     }
 
     fun setModo(modo: String) {
-        if (!_uiState.value.power) return
-        val sent = sendCommand("modo_$modo")
-        _uiState.update {
-            it.copy(
-                modo = modo,
-                lastMessage = if (sent) null else "No se encontró el comando de modo '$modo' para $marca/$modelo"
-            )
-        }
+        val current = _uiState.value
+        if (!current.power) return
+        val newState = current.copy(modo = modo)
+        applyAndSend(newState, "modo_$modo", "modo '$modo'")
     }
 
-    private fun sendCommand(comando: String): Boolean {
-        val pattern = repository.getCommand(marca, modelo, comando) ?: return false
+    private fun applyAndSend(newState: AcUiState, rawComando: String, descripcion: String) {
+        val sent = send(newState, rawComando)
+        _uiState.value = newState.copy(
+            lastMessage = if (sent) null else "No se pudo enviar el comando de $descripcion para $marca/$modelo"
+        )
+    }
+
+    private fun send(state: AcUiState, rawComando: String): Boolean {
         val device = repository.getDevice(marca, modelo) ?: return false
-        return transmitter.transmit(device.frecuenciaHz, pattern)
+        return when (device.protocolo) {
+            PROTOCOLO_ELECTRA -> {
+                val pattern = ElectraAcEncoder.buildPattern(state.power, state.tempC, state.modo)
+                transmitter.transmit(ElectraAcEncoder.FREQUENCY_HZ, pattern)
+            }
+            else -> {
+                val pattern = device.comandos[rawComando] ?: return false
+                transmitter.transmit(device.frecuenciaHz, pattern)
+            }
+        }
     }
 }
 

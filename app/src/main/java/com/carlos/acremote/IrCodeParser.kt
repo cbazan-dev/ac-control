@@ -26,6 +26,7 @@ object IrCodeParser {
                 marca = deviceObj.getString("marca"),
                 modelo = deviceObj.getString("modelo"),
                 frecuenciaHz = deviceObj.getInt("frecuencia_hz"),
+                protocolo = deviceObj.optString("protocolo", PROTOCOLO_RAW),
                 comandos = comandos
             )
         }

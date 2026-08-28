@@ -1,8 +1,16 @@
 [
   {
+    "marca": "Sankey",
+    "modelo": "YKR-P/001E",
+    "frecuencia_hz": 38000,
+    "protocolo": "electra",
+    "comandos": {}
+  },
+  {
     "marca": "LG",
     "modelo": "generico_frio_1",
     "frecuencia_hz": 38000,
+    "protocolo": "raw",
     "comandos": {
       "power_on": [9000, 4500, 560, 560, 560, 560, 560, 1690, 560, 560, 560, 560, 560, 560, 560, 1690, 560, 39000],
       "power_off": [9000, 4500, 560, 560, 560, 560, 560, 1690, 560, 560, 560, 560, 560, 1690, 560, 560, 560, 39000],

@@ -22,8 +22,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.carlos.acremote.ui.theme.ACRemoteTheme
 
 // Marca/modelo por defecto hasta que exista la selección/onboarding (Fase 4).
-private const val DEFAULT_MARCA = "LG"
-private const val DEFAULT_MODELO = "generico_frio_1"
+private const val DEFAULT_MARCA = "Sankey"
+private const val DEFAULT_MODELO = "YKR-P/001E"
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {

@@ -19,11 +19,10 @@ class IrCodeParserTest {
           },
           {
             "marca": "Sankey",
-            "modelo": "generico_1",
+            "modelo": "YKR-P/001E",
             "frecuencia_hz": 38000,
-            "comandos": {
-              "power_on": [9000, 4500, 560, 560]
-            }
+            "protocolo": "electra",
+            "comandos": {}
           }
         ]
     """.trimIndent()
@@ -50,6 +49,16 @@ class IrCodeParserTest {
 
         assertTrue(lg.comandos.containsKey("power_on"))
         assertArrayEquals(intArrayOf(9000, 4500, 560, 560), lg.comandos["power_on"])
+    }
+
+    @Test
+    fun `usa protocolo raw por defecto y respeta protocolo explicito`() {
+        val devices = IrCodeParser.parse(sampleJson)
+        val lg = devices.first { it.marca == "LG" }
+        val sankey = devices.first { it.marca == "Sankey" }
+
+        assertEquals(PROTOCOLO_RAW, lg.protocolo)
+        assertEquals(PROTOCOLO_ELECTRA, sankey.protocolo)
     }
 
     private fun assertArrayEquals(expected: IntArray, actual: IntArray?) {
