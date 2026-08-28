@@ -31,6 +31,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -190,25 +191,38 @@ fun HomeScreen(marca: String, modelo: String, viewModel: AcViewModel) {
                     RemoteToggleRow(
                         icon = Icons.Filled.Lightbulb,
                         label = "LED equipo",
+                        statusOnLabel = "Encendido",
+                        statusOffLabel = "Apagado",
                         checked = uiState.ledEquipoOn,
                         enabled = uiState.power,
                         accentColor = RemotePalette.accentCool,
                         accentSurface = RemotePalette.accentCoolSurface,
-                        onCheckedChange = { viewModel.toggleLedEquipo() }
+                        onClick = viewModel::toggleLedEquipo,
+                        onLongClick = viewModel::resyncLedEquipo
                     )
                 }
                 Box(modifier = Modifier.weight(1f)) {
                     RemoteToggleRow(
                         icon = Icons.Filled.Bolt,
                         label = "Turbo",
+                        statusOnLabel = "Activo",
+                        statusOffLabel = "Inactivo",
                         checked = uiState.turbo,
                         enabled = uiState.power,
                         accentColor = RemotePalette.accentTurbo,
                         accentSurface = RemotePalette.accentTurboSurface,
-                        onCheckedChange = { viewModel.toggleTurbo() }
+                        onClick = viewModel::toggleTurbo
                     )
                 }
             }
+
+            Text(
+                text = "¿El LED no coincide? Mantené apretado para corregirlo.",
+                color = RemotePalette.textFaint,
+                fontSize = 10.sp,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth()
+            )
 
             uiState.lastMessage?.let { message ->
                 Text(text = message, color = RemotePalette.textMuted, fontSize = 12.sp)

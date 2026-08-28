@@ -1,8 +1,10 @@
 package com.carlos.acremote
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -238,15 +240,23 @@ fun ModeSelector(
     }
 }
 
+/**
+ * @param onLongClick acción secundaria opcional (mantener apretado). La usa el
+ *        toggle de LED para corregir el desfase con el equipo sin mandar IR.
+ */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun RemoteToggleRow(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     label: String,
+    statusOnLabel: String,
+    statusOffLabel: String,
     checked: Boolean,
     enabled: Boolean,
     accentColor: Color,
     accentSurface: Color,
-    onCheckedChange: (Boolean) -> Unit
+    onClick: () -> Unit,
+    onLongClick: (() -> Unit)? = null
 ) {
     Row(
         modifier = Modifier
@@ -254,6 +264,11 @@ fun RemoteToggleRow(
             .background(if (checked && enabled) accentSurface else RemotePalette.surface)
             .border(1.dp, if (checked && enabled) accentColor else RemotePalette.border, RoundedCornerShape(15.dp))
             .alpha(if (enabled) 1f else 0.4f)
+            .combinedClickable(
+                enabled = enabled,
+                onClick = onClick,
+                onLongClick = onLongClick
+            )
             .padding(horizontal = 14.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp)
@@ -266,11 +281,16 @@ fun RemoteToggleRow(
         )
         Column(modifier = Modifier.weight(1f, fill = false)) {
             Text(text = label, color = RemotePalette.textPrimary, fontSize = 11.5.sp, fontWeight = FontWeight.Medium)
-            Text(text = if (checked) "Activo" else "Inactivo", color = RemotePalette.textMuted, fontSize = 10.sp)
+            Text(
+                text = if (checked) statusOnLabel else statusOffLabel,
+                color = RemotePalette.textMuted,
+                fontSize = 10.sp
+            )
         }
         Switch(
             checked = checked,
-            onCheckedChange = onCheckedChange,
+            // La fila entera maneja el toque; el switch es solo indicador.
+            onCheckedChange = null,
             enabled = enabled,
             colors = SwitchDefaults.colors(
                 checkedThumbColor = accentColor,

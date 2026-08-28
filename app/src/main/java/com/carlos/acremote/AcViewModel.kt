@@ -76,6 +76,22 @@ class AcViewModel(
         applyAndSend(newState, "led_toggle", "LED del equipo", toggleLight = true)
     }
 
+    /**
+     * Corrige el desfase entre lo que la app cree del LED y lo que se ve en el
+     * equipo, sin mandar nada por IR. Hace falta porque el estado del LED es
+     * optimista (ver toggleLedEquipo): si el equipo se apaga de la corriente o
+     * alguien usa el control físico, la app queda invertida y sin manera de
+     * enterarse.
+     */
+    fun resyncLedEquipo() {
+        val current = _uiState.value
+        val newState = current.copy(ledEquipoOn = !current.ledEquipoOn, lastMessage = null)
+        _uiState.value = newState
+        viewModelScope.launch {
+            preferencesRepository.guardarEstado(newState.tempC, newState.modo, newState.turbo, newState.ledEquipoOn)
+        }
+    }
+
     private fun applyAndSend(
         newState: AcUiState,
         rawComando: String,
