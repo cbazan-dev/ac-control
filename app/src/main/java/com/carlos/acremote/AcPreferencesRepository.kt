@@ -18,11 +18,14 @@ data class AcPreferencesState(
     val modelo: String?,
     val tempC: Int?,
     val modo: String?,
+    val turbo: Boolean?,
+    val ledEquipoOn: Boolean?,
     val onboardingCompleto: Boolean
 )
 
 /**
- * RF-04: persiste la marca/modelo elegidos y el último estado (temp, modo) enviado.
+ * RF-04: persiste la marca/modelo elegidos y el último estado (temp, modo,
+ * turbo, LED del equipo) enviado.
  */
 class AcPreferencesRepository(private val context: Context) {
 
@@ -31,6 +34,8 @@ class AcPreferencesRepository(private val context: Context) {
         val MODELO = stringPreferencesKey("modelo")
         val TEMP_C = intPreferencesKey("temp_c")
         val MODO = stringPreferencesKey("modo")
+        val TURBO = booleanPreferencesKey("turbo")
+        val LED_EQUIPO_ON = booleanPreferencesKey("led_equipo_on")
         val ONBOARDING_COMPLETO = booleanPreferencesKey("onboarding_completo")
     }
 
@@ -40,6 +45,8 @@ class AcPreferencesRepository(private val context: Context) {
             modelo = prefs[Keys.MODELO],
             tempC = prefs[Keys.TEMP_C],
             modo = prefs[Keys.MODO],
+            turbo = prefs[Keys.TURBO],
+            ledEquipoOn = prefs[Keys.LED_EQUIPO_ON],
             onboardingCompleto = prefs[Keys.ONBOARDING_COMPLETO] ?: false
         )
     }
@@ -52,10 +59,12 @@ class AcPreferencesRepository(private val context: Context) {
         }
     }
 
-    suspend fun guardarEstado(tempC: Int, modo: String) {
+    suspend fun guardarEstado(tempC: Int, modo: String, turbo: Boolean, ledEquipoOn: Boolean) {
         context.dataStore.edit { prefs ->
             prefs[Keys.TEMP_C] = tempC
             prefs[Keys.MODO] = modo
+            prefs[Keys.TURBO] = turbo
+            prefs[Keys.LED_EQUIPO_ON] = ledEquipoOn
         }
     }
 }

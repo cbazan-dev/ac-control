@@ -18,16 +18,21 @@ class AcViewModel(
     private val marca: String,
     private val modelo: String,
     initialTempC: Int,
-    initialModo: String
+    initialModo: String,
+    initialTurbo: Boolean,
+    initialLedEquipoOn: Boolean
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(AcUiState(tempC = initialTempC, modo = initialModo))
+    private val _uiState = MutableStateFlow(
+        AcUiState(tempC = initialTempC, modo = initialModo, turbo = initialTurbo, ledEquipoOn = initialLedEquipoOn)
+    )
     val uiState: StateFlow<AcUiState> = _uiState.asStateFlow()
 
     fun togglePower() {
         val current = _uiState.value
         val turningOn = !current.power
-        val newState = current.copy(power = turningOn)
+        // Al apagar, el turbo se corta con el equipo (no persiste al prender de nuevo).
+        val newState = current.copy(power = turningOn, turbo = turningOn && current.turbo)
         applyAndSend(newState, if (turningOn) "power_on" else "power_off", "power")
     }
 
@@ -52,21 +57,51 @@ class AcViewModel(
         applyAndSend(newState, "modo_$modo", "modo '$modo'")
     }
 
-    private fun applyAndSend(newState: AcUiState, rawComando: String, descripcion: String) {
-        val sent = send(newState, rawComando)
+    fun toggleTurbo() {
+        val current = _uiState.value
+        if (!current.power) return
+        val newState = current.copy(turbo = !current.turbo)
+        applyAndSend(newState, "turbo_toggle", "turbo")
+    }
+
+    /**
+     * El equipo no informa su LED real: el protocolo solo permite mandarle un
+     * pulso para que lo alterne (ver ElectraAcEncoder.buildPattern). Acá solo
+     * reflejamos de forma optimista lo que asumimos que pasó.
+     */
+    fun toggleLedEquipo() {
+        val current = _uiState.value
+        if (!current.power) return
+        val newState = current.copy(ledEquipoOn = !current.ledEquipoOn)
+        applyAndSend(newState, "led_toggle", "LED del equipo", toggleLight = true)
+    }
+
+    private fun applyAndSend(
+        newState: AcUiState,
+        rawComando: String,
+        descripcion: String,
+        toggleLight: Boolean = false
+    ) {
+        val sent = send(newState, rawComando, toggleLight)
         _uiState.value = newState.copy(
             lastMessage = if (sent) null else "No se pudo enviar el comando de $descripcion para $marca/$modelo"
         )
         viewModelScope.launch {
-            preferencesRepository.guardarEstado(newState.tempC, newState.modo)
+            preferencesRepository.guardarEstado(newState.tempC, newState.modo, newState.turbo, newState.ledEquipoOn)
         }
     }
 
-    private fun send(state: AcUiState, rawComando: String): Boolean {
+    private fun send(state: AcUiState, rawComando: String, toggleLight: Boolean): Boolean {
         val device = repository.getDevice(marca, modelo) ?: return false
         return when (device.protocolo) {
             PROTOCOLO_ELECTRA -> {
-                val pattern = ElectraAcEncoder.buildPattern(state.power, state.tempC, state.modo)
+                val pattern = ElectraAcEncoder.buildPattern(
+                    power = state.power,
+                    tempC = state.tempC,
+                    modo = state.modo,
+                    turbo = state.turbo,
+                    toggleLight = toggleLight
+                )
                 transmitter.transmit(ElectraAcEncoder.FREQUENCY_HZ, pattern)
             }
             else -> {
@@ -84,12 +119,15 @@ class AcViewModelFactory(
     private val marca: String,
     private val modelo: String,
     private val initialTempC: Int,
-    private val initialModo: String
+    private val initialModo: String,
+    private val initialTurbo: Boolean,
+    private val initialLedEquipoOn: Boolean
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         @Suppress("UNCHECKED_CAST")
         return AcViewModel(
-            transmitter, repository, preferencesRepository, marca, modelo, initialTempC, initialModo
+            transmitter, repository, preferencesRepository, marca, modelo,
+            initialTempC, initialModo, initialTurbo, initialLedEquipoOn
         ) as T
     }
 }

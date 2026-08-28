@@ -25,14 +25,31 @@ object ElectraAcEncoder {
 
     private const val FAN_AUTO = 0b101
     private const val SWING_OFF = 0b111
+    private const val TURBO_BIT = 6
     private const val LIGHT_TOGGLE_OFF = 0x08
+    private const val LIGHT_TOGGLE_ON = 0x15
 
     private const val TEMP_MIN = 16
     private const val TEMP_MAX = 32
     private const val TEMP_DELTA = 8
 
-    fun buildPattern(power: Boolean, tempC: Int, modo: String): IntArray =
-        encodeToPulses(buildStateBytes(power, tempC, modo))
+    /**
+     * @param turbo estado persistente del modo turbo: se repite en cada transmisión
+     *              mientras esté activo (a diferencia de toggleLight, que es un pulso).
+     * @param toggleLight true SOLO en la transmisión que corresponde a apretar el botón
+     *                    de luz/LED del equipo: el protocolo no manda un estado
+     *                    absoluto de encendido/apagado del LED, manda un pulso que hace
+     *                    que el equipo invierta el suyo. En cualquier otra transmisión
+     *                    (power, temp, modo, turbo) debe ir en false para no
+     *                    alternar el LED sin querer.
+     */
+    fun buildPattern(
+        power: Boolean,
+        tempC: Int,
+        modo: String,
+        turbo: Boolean = false,
+        toggleLight: Boolean = false
+    ): IntArray = encodeToPulses(buildStateBytes(power, tempC, modo, turbo, toggleLight))
 
     private fun modeToElectra(modo: String): Int = when (modo) {
         AcModes.FRIO -> MODE_COOL
@@ -41,7 +58,13 @@ object ElectraAcEncoder {
         else -> MODE_AUTO
     }
 
-    internal fun buildStateBytes(power: Boolean, tempC: Int, modo: String): IntArray {
+    internal fun buildStateBytes(
+        power: Boolean,
+        tempC: Int,
+        modo: String,
+        turbo: Boolean = false,
+        toggleLight: Boolean = false
+    ): IntArray {
         val raw = IntArray(STATE_LENGTH)
         raw[0] = 0xC3 // valor fijo (stateReset en la librería original)
 
@@ -49,9 +72,10 @@ object ElectraAcEncoder {
         raw[1] = (SWING_OFF and 0x07) or ((tempRaw and 0x1F) shl 3)
         raw[2] = (SWING_OFF and 0x07) shl 5
         raw[4] = (FAN_AUTO and 0x07) shl 5
+        raw[5] = if (turbo) (1 shl TURBO_BIT) else 0
         raw[6] = (modeToElectra(modo) and 0x07) shl 5
         raw[9] = if (power) (1 shl 5) else 0
-        raw[11] = LIGHT_TOGGLE_OFF
+        raw[11] = if (toggleLight) LIGHT_TOGGLE_ON else LIGHT_TOGGLE_OFF
 
         var sum = 0
         for (i in 0 until STATE_LENGTH - 1) sum += raw[i]

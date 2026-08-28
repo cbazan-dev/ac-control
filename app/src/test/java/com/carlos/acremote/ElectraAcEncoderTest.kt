@@ -53,4 +53,25 @@ class ElectraAcEncoderTest {
         // temp máxima (32) -> raw 24 -> byte1 = 7 | (24 << 3) = 199
         assertEquals(199, alto[1])
     }
+
+    @Test
+    fun `turbo prende el bit 6 del byte 5 y se mantiene mientras este activo`() {
+        val bytes = ElectraAcEncoder.buildStateBytes(power = true, tempC = 24, modo = AcModes.FRIO, turbo = true)
+
+        // byte5 = turbo(1) << 6 = 64; byte12 = 786 + 64 = 850 mod 256 = 82
+        val esperado = intArrayOf(0xC3, 135, 224, 0, 160, 64, 32, 0, 0, 32, 0, 8, 82)
+        assertEquals(esperado.toList(), bytes.toList())
+    }
+
+    @Test
+    fun `toggleLight manda el pulso de LED (0x15) solo en esa transmision`() {
+        val conToggle = ElectraAcEncoder.buildStateBytes(power = true, tempC = 24, modo = AcModes.FRIO, toggleLight = true)
+        val sinToggle = ElectraAcEncoder.buildStateBytes(power = true, tempC = 24, modo = AcModes.FRIO)
+
+        // byte11 = 0x15 = 21; byte12 = 786 - 8 + 21 = 799 mod 256 = 31
+        assertEquals(21, conToggle[11])
+        assertEquals(31, conToggle[12])
+        // el resto de las transmisiones (default) siguen mandando el valor "sin toggle"
+        assertEquals(8, sinToggle[11])
+    }
 }
