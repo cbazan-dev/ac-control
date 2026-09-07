@@ -64,6 +64,20 @@ class ElectraAcEncoderTest {
     }
 
     @Test
+    fun `el swing vertical pone en cero los 3 bits bajos del byte 1`() {
+        val conSwing = ElectraAcEncoder.buildStateBytes(power = true, tempC = 24, modo = AcModes.FRIO, swingV = true)
+        val sinSwing = ElectraAcEncoder.buildStateBytes(power = true, tempC = 24, modo = AcModes.FRIO)
+
+        // byte1 = swingOn(0b000) | (temp(16) << 3) = 128; byte12 = 786 - 7 = 779 mod 256 = 11
+        assertEquals(128, conSwing[1])
+        assertEquals(11, conSwing[12])
+        // el swing horizontal (byte2) no cambia: el equipo no lo expone
+        assertEquals(224, conSwing[2])
+        // por defecto sigue apagado
+        assertEquals(135, sinSwing[1])
+    }
+
+    @Test
     fun `toggleLight manda el pulso de LED (0x15) solo en esa transmision`() {
         val conToggle = ElectraAcEncoder.buildStateBytes(power = true, tempC = 24, modo = AcModes.FRIO, toggleLight = true)
         val sinToggle = ElectraAcEncoder.buildStateBytes(power = true, tempC = 24, modo = AcModes.FRIO)

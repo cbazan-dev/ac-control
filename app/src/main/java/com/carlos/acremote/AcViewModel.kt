@@ -20,11 +20,18 @@ class AcViewModel(
     initialTempC: Int,
     initialModo: String,
     initialTurbo: Boolean,
+    initialSwingV: Boolean,
     initialLedEquipoOn: Boolean
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(
-        AcUiState(tempC = initialTempC, modo = initialModo, turbo = initialTurbo, ledEquipoOn = initialLedEquipoOn)
+        AcUiState(
+            tempC = initialTempC,
+            modo = initialModo,
+            turbo = initialTurbo,
+            swingV = initialSwingV,
+            ledEquipoOn = initialLedEquipoOn
+        )
     )
     val uiState: StateFlow<AcUiState> = _uiState.asStateFlow()
 
@@ -65,6 +72,18 @@ class AcViewModel(
     }
 
     /**
+     * Oscilación vertical de la aleta (botón "up/down" del control físico).
+     * A diferencia del turbo, la aleta conserva su posición al apagar el
+     * equipo, así que el estado se mantiene entre encendidos.
+     */
+    fun toggleSwing() {
+        val current = _uiState.value
+        if (!current.power) return
+        val newState = current.copy(swingV = !current.swingV)
+        applyAndSend(newState, "swing_toggle", "oscilación")
+    }
+
+    /**
      * El equipo no informa su LED real: el protocolo solo permite mandarle un
      * pulso para que lo alterne (ver ElectraAcEncoder.buildPattern). Acá solo
      * reflejamos de forma optimista lo que asumimos que pasó.
@@ -88,7 +107,9 @@ class AcViewModel(
         val newState = current.copy(ledEquipoOn = !current.ledEquipoOn, lastMessage = null)
         _uiState.value = newState
         viewModelScope.launch {
-            preferencesRepository.guardarEstado(newState.tempC, newState.modo, newState.turbo, newState.ledEquipoOn)
+            preferencesRepository.guardarEstado(
+                newState.tempC, newState.modo, newState.turbo, newState.swingV, newState.ledEquipoOn
+            )
         }
     }
 
@@ -103,7 +124,9 @@ class AcViewModel(
             lastMessage = if (sent) null else "No se pudo enviar el comando de $descripcion para $marca/$modelo"
         )
         viewModelScope.launch {
-            preferencesRepository.guardarEstado(newState.tempC, newState.modo, newState.turbo, newState.ledEquipoOn)
+            preferencesRepository.guardarEstado(
+                newState.tempC, newState.modo, newState.turbo, newState.swingV, newState.ledEquipoOn
+            )
         }
     }
 
@@ -116,6 +139,7 @@ class AcViewModel(
                     tempC = state.tempC,
                     modo = state.modo,
                     turbo = state.turbo,
+                    swingV = state.swingV,
                     toggleLight = toggleLight
                 )
                 transmitter.transmit(ElectraAcEncoder.FREQUENCY_HZ, pattern)
@@ -137,13 +161,14 @@ class AcViewModelFactory(
     private val initialTempC: Int,
     private val initialModo: String,
     private val initialTurbo: Boolean,
+    private val initialSwingV: Boolean,
     private val initialLedEquipoOn: Boolean
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         @Suppress("UNCHECKED_CAST")
         return AcViewModel(
             transmitter, repository, preferencesRepository, marca, modelo,
-            initialTempC, initialModo, initialTurbo, initialLedEquipoOn
+            initialTempC, initialModo, initialTurbo, initialSwingV, initialLedEquipoOn
         ) as T
     }
 }
