@@ -24,6 +24,7 @@ import androidx.compose.material.icons.filled.Autorenew
 import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.PowerSettingsNew
 import androidx.compose.material.icons.filled.Remove
+import androidx.compose.material.icons.filled.SwapVert
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Switch
@@ -56,7 +57,14 @@ private fun modoLabel(modo: String) = when (modo) {
 }
 
 @Composable
-fun LcdDisplay(power: Boolean, tempC: Int, modo: String, turbo: Boolean, ledEquipoOn: Boolean) {
+fun LcdDisplay(
+    power: Boolean,
+    tempC: Int,
+    modo: String,
+    turbo: Boolean,
+    swingV: Boolean,
+    ledEquipoOn: Boolean
+) {
     val contentAlpha = if (power) 1f else 0.3f
     Column(
         modifier = Modifier
@@ -96,18 +104,21 @@ fun LcdDisplay(power: Boolean, tempC: Int, modo: String, turbo: Boolean, ledEqui
                             .background(if (power && ledEquipoOn) RemotePalette.accentCool else RemotePalette.textMuted)
                     )
                 }
+                if (power && swingV) {
+                    LcdChip(
+                        icon = Icons.Filled.SwapVert,
+                        label = "SWING",
+                        color = RemotePalette.accentCool,
+                        surface = RemotePalette.accentCoolSurface
+                    )
+                }
                 if (power && turbo) {
-                    Row(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(100))
-                            .background(RemotePalette.accentTurboSurface)
-                            .padding(horizontal = 9.dp, vertical = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        Icon(Icons.Filled.Bolt, contentDescription = null, tint = RemotePalette.accentTurbo, modifier = Modifier.size(12.dp))
-                        Text(text = "TURBO", color = RemotePalette.accentTurbo, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
-                    }
+                    LcdChip(
+                        icon = Icons.Filled.Bolt,
+                        label = "TURBO",
+                        color = RemotePalette.accentTurbo,
+                        surface = RemotePalette.accentTurboSurface
+                    )
                 }
             }
         }
@@ -135,6 +146,26 @@ fun LcdDisplay(power: Boolean, tempC: Int, modo: String, turbo: Boolean, ledEqui
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun LcdChip(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    color: Color,
+    surface: Color
+) {
+    Row(
+        modifier = Modifier
+            .clip(RoundedCornerShape(100))
+            .background(surface)
+            .padding(horizontal = 9.dp, vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(12.dp))
+        Text(text = label, color = color, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
     }
 }
 

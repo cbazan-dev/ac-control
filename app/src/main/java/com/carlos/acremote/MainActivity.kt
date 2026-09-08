@@ -16,6 +16,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.Lightbulb
+import androidx.compose.material.icons.filled.SwapVert
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -66,7 +67,7 @@ fun AcRemoteApp(hasIrEmitter: Boolean) {
     val prefsState by preferencesRepository.state.collectAsState(
         initial = AcPreferencesState(
             marca = null, modelo = null, tempC = null, modo = null,
-            turbo = null, ledEquipoOn = null, onboardingCompleto = false
+            turbo = null, swingV = null, ledEquipoOn = null, onboardingCompleto = false
         )
     )
 
@@ -94,6 +95,7 @@ fun AcRemoteApp(hasIrEmitter: Boolean) {
             initialTempC = prefsState.tempC ?: 24,
             initialModo = prefsState.modo ?: AcModes.FRIO,
             initialTurbo = prefsState.turbo ?: false,
+            initialSwingV = prefsState.swingV ?: false,
             initialLedEquipoOn = prefsState.ledEquipoOn ?: true
         )
     )
@@ -165,6 +167,7 @@ fun HomeScreen(marca: String, modelo: String, viewModel: AcViewModel) {
                 tempC = uiState.tempC,
                 modo = uiState.modo,
                 turbo = uiState.turbo,
+                swingV = uiState.swingV,
                 ledEquipoOn = uiState.ledEquipoOn
             )
 
@@ -215,6 +218,18 @@ fun HomeScreen(marca: String, modelo: String, viewModel: AcViewModel) {
                     )
                 }
             }
+
+            RemoteToggleRow(
+                icon = Icons.Filled.SwapVert,
+                label = "Oscilación (up/down)",
+                statusOnLabel = "Aleta moviéndose",
+                statusOffLabel = "Aleta fija",
+                checked = uiState.swingV,
+                enabled = uiState.power,
+                accentColor = RemotePalette.accentCool,
+                accentSurface = RemotePalette.accentCoolSurface,
+                onClick = viewModel::toggleSwing
+            )
 
             Text(
                 text = "¿El LED no coincide? Mantené apretado para corregirlo.",
